@@ -5,6 +5,6 @@
 //   }
 
 module.exports = {
-  mongoURI: 'mongodb://rchen1:rchen1@ds117866.mlab.com:17866/nuupoint'
-  // secretOrKey: 'secret'
+  mongoURI: 'mongodb://rchen1:rchen1@ds117866.mlab.com:17866/nuupoint',
+  secretOrKey: 'secret'
 }
