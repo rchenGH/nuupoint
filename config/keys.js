@@ -1,3 +1,10 @@
+// if(process.env.NODE_ENV === 'production'){
+//     module.exports = require('./keys_prod');
+//   } else {
+//     module.exports = require('./keys_dev');
+//   }
+
 module.exports = {
-    mongoURI: 'mongodb+srv://rchen:trustno1np@cluster0-u1bsy.mongodb.net/test?retryWrites=true'
+  mongoURI: 'mongodb://rchen1:rchen1@ds117866.mlab.com:17866/nuupoint'
+  // secretOrKey: 'secret'
 }
