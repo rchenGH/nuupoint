@@ -8,6 +8,8 @@ const passport = require('passport')
 
 // load input validation
 const validateRegisterInput = require('../../validation/register');
+const validateLoginInput = require('../../validation/login');
+
 
 // load user model
 const User = require('../../models/User');
@@ -29,34 +31,36 @@ router.post('/register', (req, res) => {
     }
 
     User.findOne({email: req.body.email})
-    .then(user => {
-        if(user){
-            return res.status(400).json({email: 'Email already exists'})
-        } else {
-            const avatar = gravatar.url(req.body.email, {
-                s:'200',    // size
-                r: 'pg',    // rating
-                d: 'mm'     // default
-            })
-            const newUser = new User({
-                name: req.body.name,
-                email: req.body.email,
-                avatar,
-                password: req.body.password
-            });
-
-            bcrypt.genSalt(10, (err, salt) => {
-                bcrypt.hash(newUser.password, salt, (err, hash) => {
-                    if(err) throw err;
-                    newUser.password = hash;
-                    newUser
-                        .save()
-                        .then(user => res.json(user)
-                        .catch(err => console.log(err)))
+        .then(user => {
+            if(user){
+                errors.email = 'Email already exists';
+                // pass in all errors to json
+                return res.status(400).json({errors})
+            } else {
+                const avatar = gravatar.url(req.body.email, {
+                    s:'200',    // size
+                    r: 'pg',    // rating
+                    d: 'mm'     // default
                 })
-            })
-        }
-    });
+                const newUser = new User({
+                    name: req.body.name,
+                    email: req.body.email,
+                    avatar,
+                    password: req.body.password
+                });
+
+                bcrypt.genSalt(10, (err, salt) => {
+                    bcrypt.hash(newUser.password, salt, (err, hash) => {
+                        if(err) throw err;
+                        newUser.password = hash;
+                        newUser
+                            .save()
+                            .then(user => res.json(user)
+                            .catch(err => console.log(err)))
+                    })
+                })
+            }
+        });
 });
 
 // @route   POST api/users/login
@@ -67,11 +71,19 @@ router.post('/login', (req, res) => {
     const email = req.body.email;
     const password = req.body.password;
 
+    const { errors, isValid } = validateLoginInput(req.body);
+
+    // Check validation
+    if(!isValid){
+        return res.status(400).json(errors)
+    }
+
     // Find email
     User.findOne({email: email})
         .then(user => {
             if(!user){
-                return res.status(404).json({email: 'Email not found'})
+                errors.email = 'User not found'
+                return res.status(404).json(errors)
             }
 
         // Check password
@@ -91,7 +103,8 @@ router.post('/login', (req, res) => {
                         }
                     );
                 } else {
-                    res.status(400).json({password: 'Password does not match'})
+                    errors.password = 'Password incorect'
+                    res.status(400).json(errors)
                 }
             })
         });
