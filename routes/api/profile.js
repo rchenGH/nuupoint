@@ -4,6 +4,8 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const passport = require('passport');
 
+const validateProfileInput = require('../../validation/profile');
+
 // Load Profile Model
 const Profile = require('../../models/Profile');
 
@@ -25,6 +27,7 @@ router.get('/', passport.authenticate('jwt', { session: false }), (req, res) => 
     // will match with user model, which will include the object id
     // want to match it to req.user.id
     Profile.findOne({ user: req.user.id })
+        .populate('user', ['name', 'avatar'])
         .then(profile => {
             if(!profile){
                 errors.noprofile = "There is no profile for this user"
@@ -34,11 +37,21 @@ router.get('/', passport.authenticate('jwt', { session: false }), (req, res) => 
         })
         .catch(err => res.status(404).json(err));
 })
+
 // @route   POST api/profile
 // @desc    Create or edit user profile
 // @access  Private
 router.post('/', passport.authenticate('jwt', { session: false }), (req, res) => {
-    // get fields
+
+    const { errors, isValid } = validateProfileInput(req.body);
+
+    // Check Validation
+    if(!isValid){
+        // Return any errors with 400 status
+        return res.status(400).json(errors);
+    }
+
+    // get or detect fields
     const profileFields = {}
     profileFields.user = req.user.id;
     if(req.body.handle) profileFields.handle = req.body.handle;
@@ -63,27 +76,32 @@ router.post('/', passport.authenticate('jwt', { session: false }), (req, res) =>
     if(req.body.linkedin) profileFields.social.linkedin = req.body.linkedin;
     if(req.body.instagram) profileFields.social.instagram = req.body.instagram;
 
+    // find the user id and set
     Profile.findOne({ user: req.user.id })
         .then(profile => {
             if(profile){
-                // if there is a profile, then update
-                Profile.findOneAndUpdate({user: req.user.id}, {$set: profileFields}, {new: true})
-                    .then(profile => res.json(profile));
+                // if there is a profile, then update, not create a new one
+                Profile.findOneAndUpdate(
+                    {user: req.user.id}, 
+                    {$set: profileFields}, 
+                    {new: true}
+                )
+                .then(profile => res.json(profile));
             } else {
                 // otherwise, create
-
-                // check if handle exists
+                // check if handle exists, do not want multiple handles
                 Profile.findOne({handle: profileFields.handle}).then(profile => {
                     if(profile){
                         errors.handle = 'That handle already exists';
                         res.status(400).json(errors)
                     }
-
                     // if no profile with that handle, we continue
                     // save profile
-                    new Profile(profile).save().then(profile => {
-                        res.json(profile)
-                    })
+                    new Profile(profileFields).save()
+                        .then(profile => {
+                            res.json(profile)
+                        })
+                        .catch(err => res.status(400).json(err));
                 })
             }
         })
